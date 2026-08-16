@@ -370,6 +370,8 @@ function renderBoard(){
       (
         selected.type==="letter" ||
         selected.type==="dakuten" ||
+        selected.type==="dakutenOnly" ||
+        selected.type==="letterWithDakuten" ||
         selected.type==="moveChoice"
       ) &&
       selected.index===index
@@ -381,7 +383,9 @@ function renderBoard(){
       selected &&
       (
         selected.type==="letter" ||
-        selected.type==="dakuten"
+        selected.type==="dakuten" ||
+        selected.type==="dakutenOnly" ||
+        selected.type==="letterWithDakuten"
       ) &&
       isDestination(index)
     ){
@@ -521,7 +525,7 @@ function ensureMoveChoiceModal(){
           濁点のみ
         </button>
         <button id="moveChoiceTogether" type="button">
-          文字ごと
+          文字＋濁点
         </button>
       </div>
 
@@ -559,7 +563,7 @@ function closeMoveChoiceModal(clearSelection=false){
       元の文字は残す。
       濁点だけを別の「こ」「た」へ移動する。
 
-  ・文字ごと
+  ・文字＋濁点
       文字と自分の濁点をセットで、
       空いているマスへ移動する。
 
@@ -586,7 +590,7 @@ function showOwnDakutenMoveChoice(index){
     closeMoveChoiceModal(false);
 
     selected={
-      type:"dakuten",
+      type:"dakutenOnly",
       index
     };
 
@@ -604,7 +608,7 @@ function showOwnDakutenMoveChoice(index){
     closeMoveChoiceModal(false);
 
     selected={
-      type:"letter",
+      type:"letterWithDakuten",
       index
     };
 
@@ -626,15 +630,46 @@ function showOwnDakutenMoveChoice(index){
 
 function isDestination(index){
   if(!selected)return false;
-  if(selected.type==="letter"){
-    return movementUnlocked(side)&&!board[index].letter&&index!==selected.index;
+
+  /*
+    普通の文字移動
+    / 自分の濁点付き文字を文字ごと移動
+    → 空きマスへ移動
+  */
+  if(
+    selected.type==="letter" ||
+    selected.type==="letterWithDakuten"
+  ){
+    return (
+      movementUnlocked(side) &&
+      !board[index].letter &&
+      index!==selected.index
+    );
   }
-  if(selected.type==="dakuten"){
-    return movementUnlocked(side)&&index!==selected.index&&
-      (board[index].letter==="こ"||board[index].letter==="た")&&!board[index].dakutenOwner;
+
+  /*
+    普通の濁点移動
+    / 自分の文字から濁点だけ移動
+    → 濁点が付いていない「こ」「た」へ移動
+  */
+  if(
+    selected.type==="dakuten" ||
+    selected.type==="dakutenOnly"
+  ){
+    return (
+      movementUnlocked(side) &&
+      index!==selected.index &&
+      (
+        board[index].letter==="こ" ||
+        board[index].letter==="た"
+      ) &&
+      !board[index].dakutenOwner
+    );
   }
+
   return false;
 }
+
 function clickCell(index){
   if(gameOver||aiThinking||types[side]!=="human")return;
   const cell=board[index];
@@ -645,6 +680,8 @@ function clickCell(index){
     (
       selected.type==="letter" ||
       selected.type==="dakuten" ||
+      selected.type==="dakutenOnly" ||
+      selected.type==="letterWithDakuten" ||
       selected.type==="moveChoice"
     ) &&
     selected.index===index
@@ -756,12 +793,18 @@ function clickCell(index){
     return;
   }
 
+  /*
+    自分の濁点が相手文字などに付いている場合の通常濁点移動。
+  */
   if(selected.type==="dakuten"){
     if(isDestination(index)){
       const from=selected.index;
+
       saveSnapshot();
+
       board[from].dakutenOwner=null;
-      cell.dakutenOwner=side;
+      board[index].dakutenOwner=side;
+
       playSE("dakutenMove");
       finishMove();
     }else{
@@ -770,22 +813,57 @@ function clickCell(index){
     return;
   }
 
+  /*
+    自分の文字 + 自分の濁点から
+    「濁点のみ」を選んだ場合。
+
+    元の文字は絶対にその場に残す。
+  */
+  if(selected.type==="dakutenOnly"){
+    const from=selected.index;
+    const source=board[from];
+
+    if(
+      source.owner!==side ||
+      source.dakutenOwner!==side
+    ){
+      selected=null;
+      statusLock=false;
+      render();
+      showStatus("このピースから濁点だけを動かせない状態になっているよ");
+      return;
+    }
+
+    if(isDestination(index)){
+      saveSnapshot();
+
+      // 元の文字はそのまま。濁点だけ外す。
+      board[from].dakutenOwner=null;
+
+      // 移動先へ自分の濁点を付ける。
+      board[index].dakutenOwner=side;
+
+      playSE("dakutenMove");
+      finishMove();
+    }else{
+      showStatus("濁点だけを移動する場合は、濁点のない「こ」か「た」を選んでね");
+    }
+    return;
+  }
+
+  /*
+    濁点の付いていない自分の文字を動かす通常の文字移動。
+  */
   if(selected.type==="letter"){
     if(isDestination(index)){
       const from=selected.index;
-      saveSnapshot();
       const source=board[from];
+
+      saveSnapshot();
+
       board[index].letter=source.letter;
       board[index].owner=source.owner;
-
-      /*
-        自分の文字に自分の濁点が付いている場合は、
-        「文字ごと」を選んだとき濁点も一緒に移動する。
-      */
-      board[index].dakutenOwner=
-        source.dakutenOwner===side
-          ? side
-          : null;
+      board[index].dakutenOwner=null;
 
       board[from]=emptyCell();
 
@@ -794,6 +872,51 @@ function clickCell(index){
     }else{
       showStatus("文字は空いているマスに移動できるよ");
     }
+    return;
+  }
+
+  /*
+    自分の文字 + 自分の濁点から
+    「文字ごと」を選んだ場合。
+
+    文字と濁点を必ずセットで移動する。
+  */
+  if(selected.type==="letterWithDakuten"){
+    const from=selected.index;
+    const source=board[from];
+
+    // 念のため、移動直前にも所有権を確認。
+    if(
+      source.owner!==side ||
+      !source.letter ||
+      source.dakutenOwner!==side
+    ){
+      selected=null;
+      statusLock=false;
+      render();
+      showStatus("文字ごと動かせる状態ではなくなっているよ");
+      return;
+    }
+
+    if(isDestination(index)){
+      saveSnapshot();
+
+      // 移動先へ文字を移す。
+      board[index].letter=source.letter;
+      board[index].owner=source.owner;
+
+      // 自分の濁点も必ず一緒に移す。
+      board[index].dakutenOwner=side;
+
+      // 元マスは完全に空にする。
+      board[from]=emptyCell();
+
+      playSE("move");
+      finishMove();
+    }else{
+      showStatus("文字ごと動かす場合は、空いているマスを選んでね");
+    }
+    return;
   }
 }
 
