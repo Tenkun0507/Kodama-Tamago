@@ -766,22 +766,57 @@ function features(b,team){
 function rlFeatureVector(b,h,team){
   const f=features(b,team);
   const enemy=otherSide(team);
-  const lineCount=Math.max(1,allLines().length);
-  const initial=Math.max(1,3*LM+DM);
-  const myLeft=h[team]["こ"]+h[team]["た"]+h[team]["ま"]+h[team]["゛"];
-  const enemyLeft=h[enemy]["こ"]+h[enemy]["た"]+h[enemy]["ま"]+h[enemy]["゛"];
+
+  const lineCount=Math.max(
+    1,
+    allLines().length
+  );
+
+  const initial=Math.max(
+    1,
+    3*LM+DM
+  );
+
+  const myLeft=
+    h[team]["こ"]+
+    h[team]["た"]+
+    h[team]["ま"]+
+    h[team]["゛"];
+
+  const enemyLeft=
+    h[enemy]["こ"]+
+    h[enemy]["た"]+
+    h[enemy]["ま"]+
+    h[enemy]["゛"];
 
   return [
     1,
-    f.ownPotential/Math.max(1,lineCount*.22),
-    -f.enemyPotential/Math.max(1,lineCount*.22),
-    f.ownThreat/Math.max(1,lineCount*.12),
-    -f.enemyThreat/Math.max(1,lineCount*.12),
-    f.enemyLock/Math.max(1,DM),
-    f.center/Math.max(1,N*N*.55),
+
+    // 自分の勝ち筋
+    f.ownPotential/
+      Math.max(1,lineCount*.22),
+
+    // 相手の勝ち筋
+    -f.enemyPotential/
+      Math.max(1,lineCount*.22),
+
+    // 自分の強い脅威
+    f.ownThreat/
+      Math.max(1,lineCount*.12),
+
+    // 相手の強い脅威
+    -f.enemyThreat/
+      Math.max(1,lineCount*.12),
+
+    // 中央・位置取り
+    f.center/
+      Math.max(1,N*N*.55),
+
+    // 残りピース差
     (enemyLeft-myLeft)/initial
   ];
 }
+
 function dot(a,b){let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s}
 function rlValue(b,h,team){
   const rec=currentRLRecord(team);
@@ -794,30 +829,92 @@ function evaluateState(b,h,team){
 
   const f=features(b,team);
   const w=getBaseAIWeights(team);
+
+  /*
+    ロック数そのものには直接点を与えない。
+
+    ロックによって
+    ・自分の勝ち筋が増える
+    ・相手の勝ち筋が減る
+    ・探索上、相手の有力な移動が消える
+    などの実利が出た場合に、その結果を通して評価する。
+
+    これにより
+    「相手の た / こ を見たら、とりあえず濁点」
+    という固定戦術を学びにくくする。
+  */
   let s=
     f.ownPotential*w.ownPotential-
     f.enemyPotential*w.enemyPotential+
     f.ownThreat*w.ownThreat-
     f.enemyThreat*w.enemyThreat+
-    f.enemyLock*w.enemyLock+
     f.center*w.center;
 
-  const myLeft=h[team]["こ"]+h[team]["た"]+h[team]["ま"]+h[team]["゛"];
+  const myLeft=
+    h[team]["こ"]+
+    h[team]["た"]+
+    h[team]["ま"]+
+    h[team]["゛"];
+
   const en=otherSide(team);
-  const enemyLeft=h[en]["こ"]+h[en]["た"]+h[en]["ま"]+h[en]["゛"];
+
+  const enemyLeft=
+    h[en]["こ"]+
+    h[en]["た"]+
+    h[en]["ま"]+
+    h[en]["゛"];
+
   s+=(enemyLeft-myLeft)*0.03;
 
   // 実戦から学んだ価値関数は、初期評価を壊さない範囲で補正として加える。
-  s+=AI_TACTICAL_SETTINGS.rlValueScale*rlValue(b,h,team);
+  s+=
+    AI_TACTICAL_SETTINGS.rlValueScale*
+    rlValue(b,h,team);
+
   return s;
 }
 
-function actionBias(a,team){
+function actionBias(b,a,team){
   const w=getBaseAIWeights(team);
-  if(a.type==="place")return w.placeLetter;
-  if(a.type==="placeDakuten")return w.placeDakuten;
-  if(a.type==="move")return w.moveLetter;
-  if(a.type==="moveDakuten")return w.moveDakuten;
+
+  if(a.type==="place"){
+    return w.placeLetter;
+  }
+
+  if(a.type==="placeDakuten"){
+    const target=b[a.to];
+
+    const locksEnemy=
+      target &&
+      target.owner &&
+      target.owner!==team;
+
+    /*
+      相手文字への濁点は
+      「相手をロックした」という理由だけでは
+      placeDakuten の基礎ボーナスを与えない。
+
+      ただし
+      ・た→だ / こ→ご で勝ち筋が伸びる
+      ・相手の勝ち筋が崩れる
+      ・探索上、相手の有効な移動が減る
+      という効果は evaluateState() / minimax 側で評価される。
+    */
+    if(locksEnemy){
+      return 0;
+    }
+
+    return w.placeDakuten;
+  }
+
+  if(a.type==="move"){
+    return w.moveLetter;
+  }
+
+  if(a.type==="moveDakuten"){
+    return w.moveDakuten;
+  }
+
   return 0;
 }
 
@@ -861,8 +958,30 @@ function repetitionPenaltyFor(b,h,nextSide){
 
 function cheapActionScore(b,h,team,a){
   const n=applyAction(b,h,team,a);
-  if(findWin(n.board,team))return 1e9;
-  return evaluateState(n.board,n.hands,team)+actionBias(a,team)-repetitionPenaltyFor(n.board,n.hands,otherSide(team));
+
+  if(findWin(n.board,team)){
+    return 1e9;
+  }
+
+  return (
+    evaluateState(
+      n.board,
+      n.hands,
+      team
+    )
+    +
+    actionBias(
+      b,
+      a,
+      team
+    )
+    -
+    repetitionPenaltyFor(
+      n.board,
+      n.hands,
+      otherSide(team)
+    )
+  );
 }
 function rankActions(b,h,team,actions){
   return actions.map(a=>({a,s:cheapActionScore(b,h,team,a)})).sort((x,y)=>y.s-x.s).map(x=>x.a);
