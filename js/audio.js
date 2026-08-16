@@ -25,8 +25,8 @@
 ========================================================= */
 const AUDIO_SETTINGS={
   masterVolume:1.00,
-  bgmVolume:0.005,
-  seVolume:7.00,
+  bgmVolume:0.01,
+  seVolume:9.00,
 
   // 各SEの基準音量
   seBaseVolume:{
