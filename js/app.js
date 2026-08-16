@@ -72,8 +72,8 @@ const AI_TACTICAL_SETTINGS={
 
    初期AIを壊しにくいよう、学習部分は「初期評価への補正」として使う。
 ========================================================= */
-const RL_STORAGE_VERSION="kt_rl_v34";
-const RL_FEATURE_COUNT=8;
+const RL_STORAGE_VERSION="kt_rl_v35_lock_neutral";
+const RL_FEATURE_COUNT=7;
 const RL_LEARNING_RATE=0.018;
 const RL_DISCOUNT=0.985;
 const RL_WEIGHT_LIMIT=2.5;
