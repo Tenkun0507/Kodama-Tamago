@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>こだま vs たまご</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+<h1>こだま vs たまご</h1>
+
+<div id="setup" class="card">
+  <div class="setup-title">プレイヤー選択</div>
+
+  <div class="team">
+    <div class="team-head">
+      <div class="team-name blue">先攻：こだま</div>
+    </div>
+    <div class="grid2" style="margin-top:8px">
+      <button id="kodama-human" onclick="chooseType('kodama','human')">プレイヤー</button>
+      <button id="kodama-ai" onclick="chooseType('kodama','ai')">AI</button>
+    </div>
+    <div id="kodama-level-box" class="ai-level-box">
+      <div class="ai-level-label">AIの強さ</div>
+      <div class="ai-level-buttons">
+        <button id="kodama-level-easy" onclick="setAILevel('kodama','easy')">弱い</button>
+        <button id="kodama-level-normal" onclick="setAILevel('kodama','normal')">普通</button>
+        <button id="kodama-level-hard" onclick="setAILevel('kodama','hard')">強い</button>
+        <button id="kodama-level-expert" onclick="setAILevel('kodama','expert')">最強</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="team">
+    <div class="team-head">
+      <div class="team-name red">後攻：たまご</div>
+    </div>
+    <div class="grid2" style="margin-top:8px">
+      <button id="tamago-human" onclick="chooseType('tamago','human')">プレイヤー</button>
+      <button id="tamago-ai" onclick="chooseType('tamago','ai')">AI</button>
+    </div>
+    <div id="tamago-level-box" class="ai-level-box">
+      <div class="ai-level-label">AIの強さ</div>
+      <div class="ai-level-buttons">
+        <button id="tamago-level-easy" onclick="setAILevel('tamago','easy')">弱い</button>
+        <button id="tamago-level-normal" onclick="setAILevel('tamago','normal')">普通</button>
+        <button id="tamago-level-hard" onclick="setAILevel('tamago','hard')">強い</button>
+        <button id="tamago-level-expert" onclick="setAILevel('tamago','expert')">最強</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-group-title">ゲーム設定</div>
+  <div class="settings-group">
+<div class="row">
+    <div class="label">盤面サイズ</div>
+    <div class="grid3">
+      <button id="size-5" onclick="setBoardSize(5)">5×5</button>
+      <button id="size-6" onclick="setBoardSize(6)">6×6</button>
+      <button id="size-7" onclick="setBoardSize(7)">7×7<span class="recommended">オススメ！</span></button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="label">各文字ピース数（「こ」「た」「ま」それぞれ）</div>
+    <div class="grid4">
+      <button id="letter-1" onclick="setLetterMax(1)">1個</button>
+      <button id="letter-2" onclick="setLetterMax(2)">2個<span class="recommended">オススメ！</span></button>
+      <button id="letter-3" onclick="setLetterMax(3)">3個</button>
+      <button id="letter-4" onclick="setLetterMax(4)">4個</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="label">濁点ピース数</div>
+    <div class="grid4">
+      <button id="dakuten-1" onclick="setDakutenMax(1)">1個</button>
+      <button id="dakuten-2" onclick="setDakutenMax(2)">2個<span class="recommended">オススメ！</span></button>
+      <button id="dakuten-3" onclick="setDakutenMax(3)">3個</button>
+      <button id="dakuten-4" onclick="setDakutenMax(4)">4個</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="label">移動解禁</div>
+    <div class="grid2">
+      <button id="move-always" onclick="setMoveUnlock('always')">最初から</button>
+      <button id="move-allPieces" onclick="setMoveUnlock('allPieces')">全ピース配置後</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="label">サウンド</div>
+    <div class="grid2">
+      <button class="sound-on" data-sound="bgm" onclick="toggleBGM()">BGM：ON</button>
+      <button class="sound-on" data-sound="se" onclick="toggleSE()">SE：ON</button>
+    </div>
+  </div>
+
+  </div>
+
+  <button class="start" onclick="startGame()">ゲーム開始</button>
+  <button class="rulesbtn" onclick="openRules()">ルールを見る</button>
+</div>
+
+<div id="game">
+  <div class="game-shell">
+    <div class="game-main">
+      <div id="status" class="status"></div>
+      <div class="boardwrap"><div id="board" class="board"></div></div>
+    </div>
+    <div class="game-side">
+      <div class="game-side-card">
+        <div class="handtitle">手持ちピース</div>
+        <div id="hand" class="hand"></div>
+      </div>
+      <div class="game-side-card">
+        <div class="controls">
+          <button id="undo" onclick="undoMove()">一手戻す</button>
+          <button onclick="restartGame()">リスタート</button>
+          <button onclick="openRules()">ルール</button>
+        </div>
+        <div class="sound-controls">
+          <button class="sound-on" data-sound="bgm" onclick="toggleBGM()">BGM：ON</button>
+          <button class="sound-on" data-sound="se" onclick="toggleSE()">SE：ON</button>
+        </div>
+        <button class="back" onclick="backSetup()">設定に戻る</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="modal" onclick="if(event.target===this)closeRules()">
+  <div class="modalin">
+    <h2>ルール</h2>
+
+    <div class="rule-block">
+      <div class="rule-title">1. 勝利条件</div>
+      <div class="rule-note">先攻のこだまは「こ・だ・ま」、後攻のたまごは「た・ま・ご」を、縦・横・斜めの連続3マスに並べれば勝ち。相手の色のピースを使ってもよく、逆向きに読める並びも成立する。</div>
+
+      <div class="rule-mini-card">
+        <div class="rule-tag">色が混ざっていてもOK</div>
+
+        <div class="rule-grid3">
+          <div class="rule-cell"><div class="rule-piece k">こ</div></div>
+          <div class="rule-cell"><div class="rule-piece t">だ</div></div>
+          <div class="rule-cell"><div class="rule-piece k">ま</div></div>
+        </div>
+
+        <div class="rule-grid3" style="margin-top:10px">
+          <div class="rule-cell"><div class="rule-piece k">こ</div></div>
+          <div class="rule-cell"><div class="rule-piece k">だ</div></div>
+          <div class="rule-cell"><div class="rule-piece t">ま</div></div>
+        </div>
+
+        <div class="rule-note" style="margin-top:7px">青赤青だけでなく、青青赤のような並びでも、文字が「こ・だ・ま」なら勝ち。</div>
+      </div>
+
+      <div class="rule-mini-card">
+        <div class="rule-tag">右から左でもOK</div>
+        <div class="rule-grid3">
+          <div class="rule-cell"><div class="rule-piece k">ご</div></div>
+          <div class="rule-cell"><div class="rule-piece t">ま</div></div>
+          <div class="rule-cell"><div class="rule-piece k">た</div></div>
+        </div>
+        <div class="rule-note" style="margin-top:7px">右から読むと「た・ま・ご」なので、たまごの勝ち。</div>
+      </div>
+
+      <div class="rule-mini-card">
+        <div class="rule-tag">斜めでもOK</div>
+        <div class="rule-grid3">
+          <div class="rule-cell"><div class="rule-piece k">こ</div></div>
+          <div class="rule-cell"></div>
+          <div class="rule-cell"></div>
+          <div class="rule-cell"></div>
+          <div class="rule-cell"><div class="rule-piece t">だ</div></div>
+          <div class="rule-cell"></div>
+          <div class="rule-cell"></div>
+          <div class="rule-cell"></div>
+          <div class="rule-cell"><div class="rule-piece k">ま</div></div>
+        </div>
+        <div class="rule-note" style="margin-top:7px">横・縦だけでなく斜めの3マスも成立する。</div>
+      </div>
+    </div>
+
+    <div class="rule-block">
+      <div class="rule-title">2. 濁点の使い方</div>
+      <div class="rule-note">濁点は「こ」「た」に置ける。相手が置いた文字にも置ける。</div>
+
+      <div class="rule-line">
+        <div class="rule-cell" style="width:62px"><div class="rule-piece k">こ</div></div>
+        <div class="rule-arrow">＋</div>
+        <div class="rule-cell" style="width:62px"><div class="rule-d self"><span class="dakuten-mark" aria-hidden="true"><span class="dakuten-glyph">゛</span></span></div></div>
+        <div class="rule-arrow">→</div>
+        <div class="rule-cell" style="width:62px"><div class="rule-piece k">ご</div></div>
+      </div>
+
+      <div class="rule-line">
+        <div class="rule-cell" style="width:62px"><div class="rule-piece t">た</div></div>
+        <div class="rule-arrow">＋</div>
+        <div class="rule-cell" style="width:62px"><div class="rule-d"><span class="dakuten-mark" aria-hidden="true"><span class="dakuten-glyph">゛</span></span></div></div>
+        <div class="rule-arrow">→</div>
+        <div class="rule-cell" style="width:62px"><div class="rule-piece t">だ</div></div>
+      </div>
+    </div>
+
+    <div class="rule-block">
+      <div class="rule-title">3. 移動</div>
+      <div class="rule-note">移動解禁はゲーム設定で決まる。解禁後は、自分の文字を空きマスへ移動できる。濁点も単体で移動できる。</div>
+
+      <div class="rule-mini-card">
+        <div class="rule-tag">文字の移動</div>
+        <div class="rule-steps">
+          <div class="rule-step">
+            <div class="rule-step-label">移動前</div>
+            <div class="rule-mini-row">
+              <div class="rule-cell"><div class="rule-piece k">ま</div></div>
+              <div class="rule-cell"></div>
+              <div class="rule-cell"></div>
+            </div>
+          </div>
+
+          <div class="rule-arrow">→</div>
+
+          <div class="rule-step">
+            <div class="rule-step-label">移動後</div>
+            <div class="rule-mini-row">
+              <div class="rule-cell"></div>
+              <div class="rule-cell"></div>
+              <div class="rule-cell"><div class="rule-piece k">ま</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rule-mini-card">
+        <div class="rule-tag">濁点の移動</div>
+        <div class="rule-steps">
+          <div class="rule-step">
+            <div class="rule-step-label">移動前</div>
+            <div class="rule-mini-row">
+              <div class="rule-cell"><div class="rule-piece t">こ</div><div class="rule-d"><span class="dakuten-mark" aria-hidden="true"><span class="dakuten-glyph">゛</span></span></div></div>
+              <div class="rule-cell"></div>
+              <div class="rule-cell"><div class="rule-piece t">た</div></div>
+            </div>
+          </div>
+
+          <div class="rule-arrow">→</div>
+
+          <div class="rule-step">
+            <div class="rule-step-label">移動後</div>
+            <div class="rule-mini-row">
+              <div class="rule-cell"><div class="rule-piece t">こ</div></div>
+              <div class="rule-cell"></div>
+              <div class="rule-cell"><div class="rule-piece t">た</div><div class="rule-d"><span class="dakuten-mark" aria-hidden="true"><span class="dakuten-glyph">゛</span></span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule-block">
+      <div class="rule-title">4. ロック</div>
+      <div class="rule-note">自分の濁点が付いた自分の文字は、濁点ごとまとめて動かせる。相手の濁点が付いた自分の文字はロックされて動かせない。</div>
+
+      <div class="rule-lock">
+        <div class="rule-mini-card">
+          <div class="rule-tag">動かせる</div>
+          <div class="rule-cell" style="width:70px"><div class="rule-piece k">こ</div><div class="rule-d self"><span class="dakuten-mark" aria-hidden="true"><span class="dakuten-glyph">゛</span></span></div></div>
+          <div class="rule-note" style="margin-top:8px">自分の濁点なので一緒に移動できる。</div>
+        </div>
+
+        <div class="rule-mini-card">
+          <div class="rule-tag">動かせない</div>
+          <div class="rule-cell" style="width:70px"><div class="rule-piece k">こ</div><div class="rule-d"><span class="dakuten-mark" aria-hidden="true"><span class="dakuten-glyph">゛</span></span></div></div>
+          <div class="rule-note" style="margin-top:8px">相手の濁点なのでロックされる。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule-block">
+      <div class="rule-title">5. 引き分け</div>
+      <div class="rule-note">同じ局面が3回繰り返された場合は引き分け。</div>
+    </div>
+
+    <button class="close" onclick="closeRules()">閉じる</button>
+  </div>
+</div>
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
